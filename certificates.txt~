@@ -1,0 +1,21 @@
+##view check certs
+openssl pkcs12 -info -in keyStore.p12
+openssl x509 -in /etc/sensor/private/user.cert.pem -text
+
+### GET certs from p12
+openssl pkcs12 -in /etc/sensor/user-keystore.p12 -out certs.cer -clcerts -nokey
+openssl pkcs12 -in /etc/sensor/user-keystore.p12 -out keys.key -nocerts
+curl -k https://192.168.152.153:9448/snoop --key sample.key --cert sample.cer -v
+
+curl -k https://sia.prod.cloud.wehowsky.com:443 --key keys.key --cert certs.cer -v
+
+
+#generate key
+openssl genrsa -des3 -out ca.key 2048
+
+#generate CSR
+openssl req -new -key ca.key -out ca.csr
+
+#remove protection
+cp ca.key ca.key.org
+openssl rsa -in ca.key.org -out ca.key
