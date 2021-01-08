@@ -1,0 +1,94 @@
+some useful cases using cobalt
+https://holdmybeersecurity.com/2017/06/25/intro-to-threat-intelligence-with-bro-and-elk/
+
+##
+namp for vul scan
+nmap -Pn -p445 --script smb-vuln-ms17-010 10.11.11.0/24 -oN output.txt
+
+stenographer
+sudo /opt/stenographer/stenoread 'after 2017-03-09T09:50:00Z and before 2017-03-09T10:00:00Z' -w /mnt/data/tmp/9mar.pcap
+
+copy files from sensor
+scp -P 3000 user@localhost:/home/locuser/240623231 /home/ernst/forensics/file.pcap
+
+
+cat $DIRE/dns.*.log | awk '{print $3" "$5" "$10 }' |grep "62.128.100.109"
+
+--brolocal
+sudo /opt/bro/bin/bro -r ~/kkk1/2jun.pcap local /opt/bro/share/bro/policy/frameworks/files/detectxxx.bro 
+
+
+
+
+---------------
+ 14
+https://security.stackexchange.com/questions/119603/why-does-firefox-claim-that-my-connection-to-google-is-insecure
+
+Kaspersky, like most AV products these days, is performing a local MITM against your secure HTTP traffic. It does this in order to be able to scan payloads in HTTP transactions, be it in the request or the response.
+
+In order for this to be done correctly, Kaspersky has to generate its own root CA certificate, and generate spoofed certificates on the fly, feeding them to your browser. Kaspersky also has to install this CA into your operating system's Trusted Certificate store.
+
+The reason why it needs to install it into the OS certificate store is because this is where most software looks to validate that the Certificate Authority who has issued the certificate it has received is a valid, trusted Authority. If that authority is not there, boom, you get this error.
+
+FireFox is the only mainstream web browser that is paranoid. It refuses to trust your OS's cert store, precisely because its so easy to simply install a fake CA into it and start MITM'ing peoples connections. Instead, FireFox is distributed with a complete list of all CAs that Mozilla trusts.
+
+What's cute about this is that it's not actually adding any security whatsoever. You can simply compile the open source Mozilla NSS package and, included in it is a utility called CertUtil that can transparently inject certificates, even root CAs, into FireFox's trusted cert store. This does not require the user to accept it, nor does it even alert the user that this has happened. You can see how easy this is to do in a C# function I wrote here.
+
+So what's happening here is that Kaspersky is not properly MITM'ing FireFox, so when FireFox gets fed certs issued by Kaspersky's CA, it's throwing all the alarms and screaming at you that you're under attack.
+
+KSN servers (TCP, port 443)
+
+ksn-crypto-file-geo.kaspersky-labs.com
+ksn-crypto-a-stat-geo.kaspersky-labs.com
+ksn-crypto-url-geo.kaspersky-labs.com
+ksn-crypto-verdict-geo.kaspersky-labs.com
+ksn-crypto-kas-geo.kaspersky-labs.com
+ksn-crypto-a-stat-geo.kaspersky-labs.com  
+
+-----------
+HAPPENED IN MAY ALSO
+user@localhost:~$ cat $DIRE/notice.*.log | /opt/bro/bin/bro-cut -d | grep 'scan'
+2017-05-01T08:41:58+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.31 scanned at least 25 unique hosts on port 80/tcp in 0m0s	local	10.1.10.31	-	80	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-01T09:49:41+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.193 scanned at least 25 unique hosts on port 443/tcp in 0m29s	local	10.1.10.193	-	443	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-13T13:06:33+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.250 scanned at least 25 unique hosts on port 443/tcp in 0m37s	local	10.1.10.250	-	443	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-13T13:06:56+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.243 scanned at least 25 unique hosts on port 443/tcp in 1m0s	local	10.1.10.243	-	443	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-17T12:46:15+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.228 scanned at least 25 unique hosts on port 80/tcp in 3m27s	local	10.1.10.228	-	80	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-19T08:57:38+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.31 scanned at least 25 unique hosts on port 80/tcp in 0m22s	local	10.1.10.31	-	80	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-19T11:00:04+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.228 scanned at least 25 unique hosts on port 443/tcp in 1m53s	local	10.1.10.228	-	443	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-22T08:03:43+0000	-	-	-	-	-	-	-	-	tcp	Scan::Address_Scan	10.1.10.33 scanned at least 25 unique hosts on port 80/tcp in 0m0s	local	10.1.10.33	-	80	-	bro	Notice::ACTION_LOG	3600.000000	F	-	-	-	--
+2017-05-29T07:27:03+000
+
+
+---1get the list of unique IP address , to compare agains dns.log
+cat conn.log | /opt/bro/bin/bro-cut -d |awk '$1 > "2017-06-02T10:56:54+0200" && $1 < "2017-06-02T11:03:54+0200" {print $0}'| grep '10.1.10.33' |grep '443' | awk '{print $5}' | sort -u > myips.txt
+cat conn.log | /opt/bro/bin/bro-cut -d | grep '10.1.10.33' |grep '443' | awk '{print $5}' | sort -u >myips1033.txt
+
+
+2-get ips
+#!/usr/bin/env bash
+#set -x
+for LINE in `cat ./myips.txt`
+do
+echo -e "\nLOOK FOR $LINE"
+cat $DIRE/dns.*.log | awk  '{print $3"|"$5"|"$10"|"$22 }' |grep "$LINE" |awk -F '|' '{print $3}' | sort -u
+echo -e "END NEXT"
+#nslookup $LINE && echo "$LINE >>IP_List" || echo "$LINE >>Bad_fqdns"
+done
+
+
+3-all together
+#!/usr/bin/env bash
+IPADDRR=''
+PORT=''
+
+#set -x
+cat conn.log | /opt/bro/bin/bro-cut -d | grep '10.1.10.33' |grep '443' | awk '{print $5}' | sort -u 
+for LINE in `cat ./myips.txt`
+do
+echo -e "\nLOOK FOR $LINE"
+cat $DIRE/dns.*.log | awk  '{print $3"|"$5"|"$10"|"$22 }' |grep "$LINE" |awk -F '|' '{print $3}' | sort -u
+echo -e "END NEXT"
+#nslookup $LINE && echo "$LINE >>IP_List" || echo "$LINE >>Bad_fqdns"
+done
+
+

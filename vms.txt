@@ -1,0 +1,4 @@
+#list all vms
+virsh -c qemu+ssh://user@192.168.2.54/system list --all
+#connect to a vm
+virt-viewer --direct -c qemu+ssh://user@192.168.2.11/system vmwin7

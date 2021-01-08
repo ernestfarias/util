@@ -1,3 +1,14 @@
+#best quick config----------
+#config ssh key
+#clone repo with ssh
+git clone git@github.com:ernestfarias/tcp.git
+#add change add stuff
+git add *
+git commit -m "pp"
+git push
+#----------
+
+#other
 …or create a new repository on the command line
  echo "# -REPONAME" >> README.md
 git init
@@ -9,3 +20,35 @@ git push -u origin master
 …or push an existing repository from the command line
  git remote add origin https://github.com/ernestfarias/-REPONAME.git
 git push -u origin master
+
+#clone and then will ask for psw and not user on every push
+git clone https://ernestfarias@github.com/ernestfarias/research.git
+
+#clone and won't ask for password if you have a ssh cert
+git clone https://git@github.com:ernestfarias/tcp.git
+
+
+#test ssh key
+ssh -vT git@github.com
+ssh -i gitkey -T git@github.com
+
+#clone in one line
+git clone https://myusername:mygithubpassword@github.com/myusername/project.git
+#or with ither key name
+git clone  -i  .ssh/id_rsa.github  git+ssh://git@github.com/someone/newstart.git   /tmp/newstart
+
+#set origin to when use ssh to avoid password
+git remote set-url origin git@github.com:<Username>/<Project>.git
+#view origins
+git remote -v
+
+#crete ssh key for ghub
+#crate key
+
+#if key made with other name or place add it so no need to specify with -i cmd
+nano ~/.ssh/config
+#add those lines and then restart ssh service
+Host github.com
+    IdentityFile ~/.ssh/githubprivkey
+    User git
+

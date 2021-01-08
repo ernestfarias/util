@@ -1,0 +1,47 @@
+MERGE MASTER TO DEV, AND CHECK MODFS THEN MERGE MY DEV CHANGES TO MASTER
+cd /home/ernst/pr/bsscripts
+#(on branch development)$ 
+git checkout devel
+#commit all pendings
+git commit -am "commit"
+git push
+git merge master
+#(resolve any merge conflicts if there are any)
+git checkout master
+git merge --no-ff devel
+#(there won't be any conflicts now)
+git push
+#----------------
+
+#Basics clone a repo and push changes
+$git init
+$git clone https://github.com/[user name]/[repository name].git
+<some change>
+$git add *
+$git commit -m "change"
+$git remote add origin https://github.com/[user name]/[repository name].git
+$git push origin master
+
+
+#check current files status and current branch
+#git status
+
+#to rollback the last ADD
+git reset HEAD
+
+#commit the modifieds
+git commit -am "dns tunnel more readable2"
+
+#see pending pushes of my branch local (to send to the server)
+git log --branches --not --remotes
+git diff --branches --not --remotes
+
+#See diferences on same branch
+git log origin/deve..HEAD
+#You can also view the diff using the same syntax
+git diff origin/master..HEAD
+
+#see pending pushes from my local to server
+git log --branches
+git diff --branches
+

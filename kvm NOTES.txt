@@ -1,0 +1,476 @@
+#Who has NIC
+for vm in $(virsh list | grep running | awk '{print $2}'); do echo -n "$vm:"; virsh dumpxml $vm| grep -oP "vnet\d+" ; done
+
+#send smth to the nic
+bittwist -i int0 -l 1 -m 0 -r 1000 /Downloads/pcap/sampleaa.pcap 
+
+
+###MAC TAP
+-assign a NIC and give and IP
+-dhclient macvtapX nic from host
+-dhclient ensX 
+
+###How Connect to a VM console 
+#list all vms
+virsh -c qemu+ssh://user@192.168.2.59/system list --all
+#example: connect to a vm
+virt-viewer --direct -c qemu+ssh://labuser@192.168.2.59/system win7
+#start a vm
+virsh -c qemu+ssh://user@192.168.2.59/system start gentoo
+
+
+#LAB server reboot do not attach eth4 (server own iface)
+it has happened that some times when a server reboot is performed, eth4 the network interface on pci passthrugh, is unable to recover it registries so unable to be attached again to the vmBridge
+it causes the isolation of the vms. A solution to this is to shutdown the server, maybe needs to be unplugged and then start it back. everything should work automatically.
+could be related with MTRR/MSX registries, during vpc-IO hardware passthrough
+
+#VIRSH
+#create and run no persist
+virsh create file.xml
+#define create and persist the vm
+virsh define file.xml
+#edit a xml
+virsh edit guest1
+#copy xml config
+virsh dumpxml vmnetssr1 > guest.xml
+
+
+###Hard PASS
+#list pci
+virsh nodedev-list
+#
+virsh nodedev-dettach pci_0000_00_1f_6
+#which driver is using the dev
+lspci -nnk
+lspci -nnk -d 8086:15b7
+#view capabilities
+lspci -vvv -s  0000:03:00.0
+
+#detach a PCI dev from Physicall host and attach to VMs
+virsh nodedev-dettach pci_0000_00_14_0
+#attach to Physicall again
+virsh nodedev-reattach pci_0000_00_14_0
+
+
+#who has a vmnet0
+VNET=vnet0; for vm in $(virsh list | grep running | awk '{print $2}'); do virsh dumpxml $vm|grep -q "$VNET" && echo $vm; done
+
+##list of iommu groups vf.sh
+#!/bin/bash
+shopt -s nullglob
+for d in /sys/kernel/iommu_groups/*/devices/*; do 
+    n=${d#*/iommu_groups/*}; n=${n%%/*}
+    printf 'IOMMU Group %s ' "$n"
+    lspci -nns "${d##*/}"
+done;
+##
+##BIOS LINE TO ENABLE IOMMU
+GRUB_CMDLINE_LINUX="intel_iommu=on intel_iommu=igfx_off"
+
+
+###BRIDGE####
+ifconfig eth0 0.0.0.0
+ifconfig eth1 0.0.0.0
+brctl addbr eabridge
+brctl addif eabridge eth0
+brctl addif eabridge eth1 
+ifconfig eabridge up
+
+#ON VMBridge setup on network interfaces
+auto eafbridge
+ iface ens3 inet manual
+address 0.0.0.0
+ iface ens9 inet manual
+address 0.0.0.0
+ iface eafbridge inet manual
+    bridge_ports ens3 ens9
+	bridge_stp on
+
+
+##WITH OPEN VSWITCH
+#-Replace ifupdown files as stated in: http://docs.openvswitch.org/en/latest/howto/kvm/
+#-http://docs.openvswitch.org/en/latest/howto/libvirt/
+
+#ADDD VM INTO OPEN SWITCH
+#-Add/modify interface manually on vm , virsh , virsh list --all , virsh edit vmname
+virsh list --all
+virsh edit debian-ernst
+#modify interface type , source to bridge, add virtualport tag
+  <interface type='bridge'>
+      <mac address='51:51:00:a2:f5:cd'/>
+      <source bridge='sw0'/>
+      <virtualport type='openvswitch'/>
+      <model type='e1000'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>
+#-restart shoud add a new iface into the sw0
+#-check with: ovs-vsctl show
+ovs-dpctl show
+#note: if of was already running, reset sdn controller conn .ie by puting another sdncontroller ip address and putting it back again
+     
+
+#ON VMHOST
+#stop spanning tree proto
+brctl stp virbr4 off
+#instrucT virbr to never remember addresses, so it will ask all the time to all interfaces
+brctl setageing virbr4 0 
+###to persist it install and enable service
+systemctl enable /home/user/bridge.service
+####whbridge.service###
+[Unit]
+Description=Script to configure bridge
+[Service]
+ExecStart=/home/user/hackvrbridge2.sh
+[Install]
+WantedBy=multi-user.target 
+######
+cat ./hackvrbridge2.sh
+#!/bin/bash
+#/usr/bin/virsh nodedev-dettach pci_0000_00_1f_6
+#this add ageing 0 to the bridge that vms are using, this is to make its promiscous. virbr4 the device qemu created 
+/bin/sleep 60
+/sbin/brctl setageing virbr4 0
+#amn can also add an interface to the promisc bridge, that iface could go to a netsensor
+#brctl addif vurbr4 eth0
+#######
+##check that is 0
+cat /sys/class/net/virbr4/bridge/ageing_time
+######
+
+########OVS SERVICE################
+[Unit]
+Description=Open vSwitch Internal Unit
+PartOf=openvswitch-switch.service
+
+#https://bugs.launchpad.net/ubuntu/+source/openvswitch/+bug/1448254
+
+# Without this all sorts of looping dependencies occur doh!
+DefaultDependencies=no
+
+#precedants pulled from isup@ service requirements
+After=apparmor.service local-fs.target systemd-tmpfiles-setup.service
+
+#subsequent to this service we need the network to start
+Wants=network-pre.target openvswitch-switch.service
+Before=network-pre.target openvswitch-switch.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/default/openvswitch-switch
+ExecStart=/usr/share/openvswitch/scripts/ovs-ctl start \
+          --system-id=random $OVS_CTL_OPTS
+ExecStop=/usr/share/openvswitch/scripts/ovs-ctl stop
+
+
+[Install]
+WantedBy=multi-user.target
+##########################################3
+
+
+###conver vm disk format, virtio qcow2 is the optimal
+#convert from virtualbox to kvm
+qemu-img convert -f vdi -O qcow2 [VBOX-IMAGE.vdi] [KVM-IMAGE.qcow2]
+
+#from ova to qcow2
+tar -xvf "IE11 - Win8.1.ova"
+
+qemu-img convert -O qcow2 IE11Win8.1-disk1.vmdk win81.qcow2
+#or if vdi file
+#qemu-img convert -O qcow2 input.vdi output.qcow2 
+
+
+
+####SPICE on guest and clientes copy and paste
+#on host or client whom connects to host , NON in guesVM
+apt install python-spice-client-gtk
+
+#on the guest  https://www.spice-space.org/download.html
+device channel spice
+display spice
+video qlx
+    SPICE vdagent - spice-vdagent-0.17.0.tar.bz2
+        http://cgit.freedesktop.org/spice/linux/vd_agent
+    x.org QXL video driver - xf86-video-qxl-0.1.4.tar.bz2; Also contains Xspice
+        http://cgit.freedesktop.org/xorg/driver/xf86-video-qxl
+
+#linux
+#spice channel
+apt install spice-vdagent
+apt install xserver-xorg-video-qlx
+
+
+
+#create vm from VMdisk ISO
+virt-install --virt-type kvm --name squeeze-amd64 --memory 512 --cdrom ~/iso/Debian/cdimage.debian.org_mirror_cdimage_archive_6.0.10_live_amd64_iso_hybrid_debian_live_6.0.10_amd64_gnome_desktop.iso --disk size=4 --os-variant debiansqueeze
+
+#OR
+virt-install --virt-type kvm --name squeeze-amd64 \
+--location http://httpredir.debian.org/debian/dists/squeeze/main/installer-amd64/ \
+--extra-args "console=ttyS0" -v --os-variant debiansqueeze \
+--disk size=4 --memory 512
+
+#OR
+virt-install \
+ -n win7b \
+ --virt-type kvm
+ --description "Win7b" \
+ --os-type=Windows \
+ --os-variant=win7 \
+ --ram=2048 \
+ --vcpus=1 \
+ --disk path=/home/user/VMS/win7.qcow2,bus=virtio,size=10 \
+ --graphics spice \
+ --import
+ 
+
+others:
+--cdrom /var/rhel-server-6.5-x86_64-dvd.iso \
+--network bridge:br0 \
+ 
+    n Name of your virtual machine
+    description Some valid description about your VM. For example: Application server, database server, web server, etc.
+
+    os-type OS type can be Linux, Solaris, Unix or Windows. RUN: virt-install --os-variant=list | more
+
+
+    os-variant Distribution type for the above os-type. For example, for linux, it can be rhel6, centos6, ubuntu14, suse11, fedora6 , etc. For windows, this can be win2k, win2k8, win8, win7
+
+    ram Memory for the VM in MB
+
+    vcpu Total number of virtual CPUs for the VM.
+
+    disk path=/var/lib/libvirt/images/myRHELVM1.img,bus=virtio,size=10 Path where the VM image files is stored. Size in GB. In this example, this VM image file is 10GB.
+
+    graphics none This instructs virt-install to use a text console on VM serial port instead of graphical VNC window. If you have the xmanager set up, then you can ignore this parameter.
+
+    cdrom Indicates the location of installation image. You can specify the NFS or http installation location (instaed of –cdrom). For example, –location=http://.com/pub/rhel6/x86_64/
+    network bridge:br0 This example uses bridged adapter br0. It is also possible to create your own network on any specific port instead of bridged adapter. If you want to use the NAT then use something like below for the network parameter with the virtual network name known as VMnetwork1. All the network configuration files are located under /etc/libvirt/qemu/networks/ for the virtual machines. For example: –network network=VMnetwork1
+
+---
+https://fedoraproject.org/wiki/Windows_Virtio_Drivers#Direct_download
+    Stable virtio-win iso: https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso 
+The .iso contains the following bits:
+
+    NetKVM/: Virtio Network driver
+    viostor/: Virtio Block driver
+    vioscsi/: Virtio SCSI driver
+    viorng/: Virtio RNG driver
+    vioser/: Virtio serial driver
+    Balloon/: Virtio Memory Balloon driver
+    qxl/: QXL graphics driver for Windows 7 and earlier. (build virtio-win-0.1.103-1 and later)
+    qxldod/: QXL graphics driver for Windows 8 and later. (build virtio-win-0.1.103-2 and later)
+    pvpanic/: QEMU pvpanic device driver (build virtio-win-0.1.103-2 and later)
+    guest-agent/: QEMU Guest Agent 32bit and 64bit MSI installers
+    qemupciserial/: QEMU PCI serial device driver
+    *.vfd: VFD floppy images for using during install of Windows XP 
+
+###passthru BCM WHOLE CARD ?
+https://www.ibm.com/support/knowledgecenter/linuxonibm/liabp/liabppcipassthrough.htm
+
+pci_0000_02_00_0
+pci_0000_02_00_1
+pci_0000_02_00_2
+pci_0000_02_00_3
+
+
+##     <address domain='0x0000' bus='0x00' slot='0x1d' function='0x0'/>
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x1'/>
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x2'/>
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x3'/>
+
+###config to put into
+ xml of the vm 
+      
+  <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x0b' function='0x0'/>
+    </hostdev>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x02' slot='0x00' function='0x1'/>
+      </source>
+      <rom bar='off'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x0c' function='0x0'/>
+    </hostdev>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x02' slot='0x00' function='0x2'/>
+      </source>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x0d' function='0x0'/>
+    </hostdev>
+    <hostdev mode='subsystem' type='pci' managed='yes'>
+      <source>
+        <address domain='0x0000' bus='0x02' slot='0x00' function='0x3'/>
+      </source>
+      <rom bar='off'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x0e' function='0x0'/>
+    </hostdev>
+
+      
+     
+
+
+virsh nodedev-dumpxml pci_0000_02_00_0
+
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+       <address domain='0x0000' bus='0x00' slot='0x1d' function='0x0'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+         <address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x1'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x2'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x3'/>
+  </source>
+</hostdev>
+
+
+
+#passthroug bus usb
+
+#linux
+# yum install spice-vdagent
+# chkconfig --add spice-vdagentd
+# service start spice-vdagentd
+
+#windows
+Direct download 
+#windows install
+https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/6/html/Virtualization_Host_Configuration_and_Guest_Installation_Guide/form-Virtualization_Host_Configuration_and_Guest_Installation_Guide-Para_virtualized_drivers-Mounting_the_image_with_virt_manager.html
+
+#VMS DOWN
+https://winworldpc.com/product/windows-nt-2000
+
+#osx
+https://www.contrib.andrew.cmu.edu/~somlo/OSXKVM/
+
+#CMD to OSX
+root@vmhost1:/vms# qemu-system-x86_64 -enable-kvm -m 2048           -cpu core2duo,vendor=GenuineIntel   -machine q35   -usb -device usb-kbd -device usb-mouse   -device isa-applesmc,osk="564ddf559ad4597fa7f4fe793a1aca96564ddf559ad4597fa7f4fe793a1aca96"   -kernel ./chamaleanboot2v2r2404   -smbios type=2   -device ide-drive,bus=ide.2,drive=MacHDD   -drive id=MacHDD,if=none,file=./mac_hdd.img   -netdev user,id=hub0port0   -device e1000-82545em,netdev=hub0port0,id=mac_vnet0   -monitor stdio -device ide-drive,bus=ide.0,drive=MacDVD   -drive id=MacDVD,if=none,snapshot=on,file=/vms/Downloads/Apple\ Mac\ OS\ X\ 10.3.0\ -\ Disk\ 1.iso
+
+
+
+
+##########ASIGNAR PCI MANUAL VMHOST
+1-Ver grups pci que tengo
+#quiero asingar la quad broadcomm Nextreme, notar que tambien tiene a PCI Bridge 00:01.0 y 00:01.1, en el mismo grupo, estos no los quiero pasar.
+root@vmhost1:/home/user# ./vf.sh 
+IOMMU Group 0 00:00.0 Host bridge [0600]: Intel Corporation Device [8086:1918] (rev 07)
+IOMMU Group 1 00:01.0 PCI bridge [0604]: Intel Corporation Device [8086:1901] (rev 07)
+IOMMU Group 1 00:01.1 PCI bridge [0604]: Intel Corporation Device [8086:1905] (rev 07)
+IOMMU Group 1 01:00.0 Ethernet controller [0200]: Realtek Semiconductor Co., Ltd. RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller [10ec:8168] (rev 02)
+IOMMU Group 1 02:00.0 Ethernet controller [0200]: Broadcom Corporation NetXtreme BCM5719 Gigabit Ethernet PCIe [14e4:1657] (rev 01)
+IOMMU Group 1 02:00.1 Ethernet controller [0200]: Broadcom Corporation NetXtreme BCM5719 Gigabit Ethernet PCIe [14e4:1657] (rev 01)
+IOMMU Group 1 02:00.2 Ethernet controller [0200]: Broadcom Corporation NetXtreme BCM5719 Gigabit Ethernet PCIe [14e4:1657] (rev 01)
+IOMMU Group 1 02:00.3 Ethernet controller [0200]: Broadcom Corporation NetXtreme BCM5719 Gigabit Ethernet PCIe [14e4:1657] (rev 01)
+IOMMU Group 2 00:08.0 System peripheral [0880]: Intel Corporation Device [8086:1911]
+IOMMU Group 3 00:14.0 USB controller [0c03]: Intel Corporation Device [8086:a12f] (rev 31)
+IOMMU Group 3 00:14.2 Signal processing controller [1180]: Intel Corporation Device [8086:a131] (rev 31)
+IOMMU Group 4 00:16.0 Communication controller [0780]: Intel Corporation Device [8086:a13a] (rev 31)
+IOMMU Group 4 00:16.3 Serial controller [0700]: Intel Corporation Device [8086:a13d] (rev 31)
+
+
+virsh nodedev-list #lista todos los pcis que ve virsh
+
+2-ver lo que tiene mi pci device en detalle
+root@vmhost1:/home/user# virsh nodedev-dumpxml pci_0000_02_00_0
+<device>
+  <name>pci_0000_02_00_0</name>
+  <path>/sys/devices/pci0000:00/0000:00:01.1/0000:02:00.0</path>
+  <parent>pci_0000_00_01_1</parent>
+  <driver>
+    <name>tg3</name>
+  </driver>
+  <capability type='pci'>
+    <domain>0</domain>
+    <bus>2</bus>
+    <slot>0</slot>
+    <function>0</function>
+    <product id='0x1657'>NetXtreme BCM5719 Gigabit Ethernet PCIe</product>
+    <vendor id='0x14e4'>Broadcom Corporation</vendor>
+    <iommuGroup number='1'>
+      <address domain='0x0000' bus='0x00' slot='0x01' function='0x0'/>#1 este no va porque es PCI Bridge
+      <address domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>#2 este no va porque es PCI Bridge
+      <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>#3 #este y los que siguen son mi BCM Nextreme
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>#4
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x1'/>#5
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x2'/>#6
+      <address domain='0x0000' bus='0x02' slot='0x00' function='0x3'/>#7
+    </iommuGroup>
+    <pci-express>
+      <link validity='cap' port='0' speed='5' width='4'/>
+      <link validity='sta' speed='5' width='4'/>
+    </pci-express>
+  </capability>
+</device>
+
+###notar que el 00:01.0 y 00:01.1 , los 2 primer son ese PCI bridge que no quiero pasar
+
+3-por cada address creo un hostdev en mi vmnombre.xml
+
+
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x1'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x2'/>
+  </source>
+</hostdev>
+<hostdev mode='subsystem' type='pci' managed='yes'>
+  <source>
+     <address domain='0x0000' bus='0x02' slot='0x00' function='0x3'/>
+  </source>
+</hostdev>
+
+4-virsh edit vmnombre.xml
+#copio y pego desde el ultimo </hostdev> que vea en el xml
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

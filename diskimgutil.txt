@@ -1,0 +1,71 @@
+#1-img --->
+sudo su && dd if=/home/user/img/curr.img |pv| dd of=/dev/mmcblk0 bs=4M
+#4-check cerconn
+openssl s_client -connect localhost:8888 | grep "BEGIN CERT" -A999 | grep "END CERT" -B 999 | openssl x509 -text
+#1-mount dummy img, so i can get the key files
+losetup -l && ls /mnt/dummyimg/ #if mounted go to 2
+sudo losetup -P /dev/loop2 /home/user/img/img.img
+sudo mount /dev/loop2p1 /mnt/dummyimg
+#to delete an existing device- sudo losetup -d /dev/loop2
+
+#vm create ovf
+sudo ovftool --machineOutput --shaAlgorithm=sha1 vi://"root":pswxxxxx@wmhostIP/vmname1 /tmp/MisOvf 
+sudo zip -evj /tmp/vmname1.zip /tmp/MisOvf/VMmachine/*
+------------
+
+#big file need to be reduced
+#shudown vm, in efahelper vm mount the disks of the vm, and run 
+zerofree /dev/sdb1 && zerofree /dev/sdc1 ... 
+it'll reclaim unused data
+
+
+##from SD --> GZ file
+dd if=/dev/mmcblk0 bs=4M |pv| gzip > /tmp/img1.img.gz
+##from GZ file -->> SD
+sudo zcat /tmp/img1.img.gz |pv| sudo dd of=/dev/mmcblk0 bs=4M
+
+#see if part
+if [ $(/sbin/fdisk -s /dev/vda1 < 2) ]; then echo "Device not partitioned"; fi
+
+##LOOP MOUINT
+losetup -P /dev/loop0 /home/ernst/img/sensorbaseimage_current.img
+mount /dev/loop0p1 /mnt/lop1
+#detach lo0
+umount /mnt/lop1
+losetup -d /dev/loop0
+#list next avl loop dev
+losetup -f 
+
+##view check certs
+openssl pkcs12 -info -in keyStore.p12
+penssl x509 -in /etc/loc/user.cert.pem -text
+
+### GET certs from p12
+openssl pkcs12 -in /etc/userkeystore.p12 -out certs.cer -clcerts -nokey
+openssl pkcs12 -in /etc/userkeystore.p12 -out keys.key -nocerts
+curl -k https://192.168.2.3:448/snoop --key sample.key --cert sample.cer -v
+
+#cxfreeze to avoid python dependecies
+
+###re mount recovery linux , password
+mount -rw -o remount /
+
+##useful dd cmds
+https://blog.kintoandar.com/2010/02/how-to-disk-dump-dd.html
+
+#RESET PASSWORD WHUSER
+Edit /etc/shadow as user root (using su or sudo).
+Find the entry for your user and remove everything between the first and second colon (:) - it's a long string of random looking characters.
+
+##add remount as rw on create data
+mount -rw -o remount /
+or
+mount -o remount,rw /dev/sda1 /
+
+##auto upgrade on /etc/apt/conf.d/98upd
+Dpkg::Options {
+	"--force-confdef";
+	"--force-confold";
+}
+
+

@@ -1,0 +1,185 @@
+###CHANGE or DO NOT RENDER IF UNDEFINIED
+--------------------
+    render() {
+
+        let bfdetails;
+        if (this.state.selectedrow !== undefined) {
+            console.log(this.state.selectedrow);
+            bfdetails = <BlockingFlowsDetails bfselected={this.state.selectedrow}/>;
+        } else {
+            bfdetails = null;
+        }
+
+        return (
+            <div>
+			{bddetails}
+		   </div>
+
+-----------------------
+#### DO NOT RENDER IF EMPTY
+
+ render() {
+        console.log("render bfdetails" + this.props.bfselected.length);
+        if (this.props.bfselected.length == 0)
+        return (<div><i>click on a row for more details...</i></div>)
+        else
+
+        return (
+            <div>
+
+----------------------
+
+
+setState way to set a vars
+
+
+render:
+<input value={this.state.timeZone.offset} />
+
+REACT
+
+see react version
+ constructor(props) {
+      console.log("Autoprevent component load");
+     super(props);
+      this.state = {reactversion: React.version};
+      }
+    render(){
+                return(
+                    <div>
+                        <BlockingFlowsTable/>
+                    </div>
+                )
+
+            }
+
+
+-------CHILD TO PARENT------------------+-
+To pass data from child component to parent component
+
+In Parent Component:
+
+getData(val){
+    // do not forget to bind getData in constructor
+    console.log(val);
+}
+render(){
+ return(<Child sendData={this.getData}/>);
+}
+In Child Component:
+
+demoMethod(){
+   this.props.sendData(value);
+ }
+-----------------------------------------
+
+
+there are only 2 objects
+state and props.
+https://reactjs.org/docs/state-and-lifecycle.html <MOST useful link
+those contains the objetcs that you map or exists
+
+STATE
+State is similar to props, but it is private and fully controlled by the component.
+.Local state is exactly that: a feature available only to classes.
+
+-Converting a Function to a Class
+You can convert a functional component like Clock to a class in five steps:
+Create an ES6 class, with the same name, that extends React.Component.
+Add a single empty method to it called render().
+Move the body of the function into the render() method.
+Replace props with this.props in the render() body.
+Delete the remaining empty function declaration.
+
+-Adding Local State to a Class
+Replace this.props.date with this.state.date in the render() method:
+Add a class constructor that assigns the initial this.state:
+PASS PROPS TO contrusctor    super(props);Class components should always call the base constructor with props.
+
+----------
+// assuming this.state = { value: 0 }
+this.setState({
+  value: 1
+});
+
+console.log(this.state.value); // 0
+-----------
+
+// assuming this.state = { value: 0 };
+this.setState({ value: this.state.value + 1});
+this.setState({ value: this.state.value + 1});
+this.setState({ value: this.state.value + 1});
+//out value:1
+After all the above calls are processed this.state.value will be 1, not 3 like we would expect! To get around that …
+
+---------------
+
+// assuming this.state = { value: 0 };
+this.setState((state) => ({ value: state.value + 1}));
+this.setState((state) => ({ value: state.value + 1}));
+this.setState((state) => ({ value: state.value + 1}));
+//out value:3
+Will give us this.state.value = 3 like we expected in the first place. Remember to always use this syntax when updating state to a value, which is computed based on previous state!
+
+
+
+to 26 jul. 18 - on 12 sep. 18 | 1 Passagerer
+
+
+
+BIND
+To bind a function to a component could be THIS or any other, when bind in an update when you call back that function will refer to the function where it was binded
+https://reactjs.org/docs/handling-events.html. the bind is a question of javascript not react this need, basically when create your own functions do not forget to bind
+otherwise could work the load but not on update
+
+
+UNIDENTIFIED
+2 reasons, object doesnt exist, check into, this.props.xxx if there or this.state.xxx , if happend with a functions, check if it is not BOND
+by using bind function to bond the function to a componenent ie 
+----------
+class App extends React.Component {
+    constructor(props) {
+        //get data from DOM
+        super(props);
+        this.state = {blockingFlows: [], attributes: [], pageSize: 5, links: {}}; //this initialize and sets vars aka objects etc
+        this.onDelete = this.onDelete.bind(this); //those binds are binding those functions to THIS, 
+        this.onNavigate = this.onNavigate.bind(this);
+
+
+
+    onDelete(blockingFlow) {  //function that belong to This(App).
+        client({method: 'DELETE', path: blockingFlow._links.self.href}).done(response => {
+            this.loadFromServer(this.state.pageSize);
+        });
+    }
+
+
+}
+-----------------
+
+arrow functions javascript
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Functions/Arrow_functions
+
+---------
+HTTP STATUS CODES
+1XX - informational
+2XX - success
+3XX - redirection
+4XX - client error
+5XX - server error
+
+--best practices
+https://americanexpress.io/clean-code-dirty-code/ #read react section
+https://reactjs.org/docs/components-and-props.html
+https://engineering.musefind.com/our-best-practices-for-writing-react-components-dec3eb5c3fc8
+https://github.com/markerikson/react-redux-links/blob/master/react-architecture.md
+containers
+https://medium.com/@learnreact/container-components-c0e67432e005
+presentation compoenent and data component
+
+--DEBUG
+webpack creates debug.js, will be unreadable if not using sourcemaps.
+https://trackjs.com/blog/debugging-with-sourcemaps/
+
+
+ADDED     devtool: 'sourcemaps', webpack config file to make debugging possible

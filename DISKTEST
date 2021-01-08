@@ -1,0 +1,73 @@
+DISK TESTS
+DELL
+
+TIMMING CACHE AND BUFFERD
+
+timing cached reads:This displays the speed of reading directly from the Linux buffer cache without disk access. 
+This measurement is essentially an indication of the throughput of the processor, cache, and memory of the system under test
+
+
+timing buffered: This displays the speed of reading through the buffer cache to the disk without any prior caching of data. 
+This measurement is an indication of how fast the drive can sustain sequential data reads under Linux, without any filesystem overhead.
+The disk buffer is controlled by the microcontroller in the hard disk drive
+
+
+SDD
+/dev/sda:
+ Timing cached reads:   13212 MB in  2.00 seconds = 6613.64 MB/sec  
+ Timing buffered disk reads: 1478 MB in  3.00 seconds = 492.30 MB/sec
+/dev/sda:
+ Timing cached reads:   13134 MB in  2.00 seconds = 6574.53 MB/sec
+ Timing buffered disk reads: 1478 MB in  3.00 seconds = 492.42 MB/sec
+
+
+HDD
+root@delltest:/home/whuser# hdparm -Tt /dev/sdb
+
+/dev/sdb:
+ Timing cached reads:   13152 MB in  2.00 seconds = 6583.48 MB/sec
+ Timing buffered disk reads: 616 MB in  3.01 seconds = 204.88 MB/sec
+
+/dev/sdb:
+ Timing cached reads:   12996 MB in  2.00 seconds = 6505.61 MB/sec
+ Timing buffered disk reads: 620 MB in  3.00 seconds = 206.51 MB/sec
+
+
+
+AVG WRITE (DD METHOD)
+This tells dd to require a complete “sync” once, right before it exits. 
+So it commits the whole 10GB of data, then tells the operating system: “OK, now ensure this is completely on disk”, 
+only then measures the total time it took to do all that and calculates the benchmark result. REALISTIC
+SDD
+root@delltest:/mnt/data# dd if=/dev/zero of=tempfile bs=1M count=10240 conv=fdatasync                        
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB, 10 GiB) copied, 22,9266 s, 468 MB/s
+
+HDD
+root@delltest:/mnt/data2# dd if=/dev/zero of=tempfile bs=1M count=10240 conv=fdatasync
+10240+0 records in
+10240+0 records out
+10737418240 bytes (11 GB, 10 GiB) copied, 57,3316 s, 187 MB/s
+
+
+AVG READ
+SSD
+echo 3 > /proc/sys/vm/drop_caches (clear buff)
+dd if=tempfile of=/dev/null bs=1M count=10240 status=progress
+10737418240 bytes (11 GB, 10 GiB) copied, 20,815 s, 516 MB/s
+
+HDD
+echo 3 > /proc/sys/vm/drop_caches (clear buff)
+dd if=tempfile of=/dev/null bs=1M count=10240 status=progress
+10737418240 bytes (11 GB, 10 GiB) copied, 52,6473 s, 204 MB/s
+
+
+
+
+
+
+
+
+
+https://wiki.archlinux.org/index.php/benchmarking

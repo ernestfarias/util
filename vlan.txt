@@ -1,0 +1,14 @@
+VLAN
+VLAN key concepts:
+
+  -  VLANs are a way to group ports, potentially across multiple switches, into networks (Virtual Local Area Networks). In this way, a switch can be partitioned to, among other things, serve multiple networks all isolated from each other.
+  -  Each VLAN is identified by an ID which is a number.
+  -  Each port on the switch is designated as Tagged, Untagged or Excluded in each VLAN.
+  -  If a port is Tagged, the switch will add the VLAN ID to the header of any packets sent on that interface.  Tagged packets are only understood by network equipment that is VLAN aware.
+  -  If a port is Untagged the switch will not add the VLAN ID to the header of packets sent on that interface 
+	and will remove and VLAN IDs in packets that came in on a Tagged interface.
+  -  If a port is Excluded from a VLAN packets with that VLAN ID will never be sent out on that port.
+  -  If a port is marked Untagged on one VLAN, it will be excluded from all other VLANs.  In other words, an Untagged interface can only be a part of one VLAN at a time.
+  -  A port can be marked as Tagged on any number of VLANs
+
+

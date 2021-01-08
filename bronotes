@@ -1,0 +1,17 @@
+bro
+bro doesnt detect traffic
+1-Is conn SSL,? if YES, no way to detect encrypted comm. you'll only get the x509 if enabled
+   ie If you get a malware from https, signature detection is useless
+
+
+SIMULATE SEND A FILE THRU UDP
+nc -u -l 7777 > newfile.jpg #on the destination machine open the port to listen
+cat file.jpg | nc -u 192.168.x.x 7777 #on the source machine SEND raw
+
+OPTION 2
+#SERVER RECIEVER
+nc -l -p 1234 -q 1 > something.zip < /dev/null
+On your "sender client" (B):
+cat something.zip | netcat server.ip.here 1234
+
+file analizer bro only for TCP conns
